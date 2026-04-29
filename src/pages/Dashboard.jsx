@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme, DARK, LIGHT } from '../context/ThemeContext';
 import InfoPanel from '../components/InfoPanel';
 import BangladeshMap from '../components/BangladeshMap';
 import SiteFormModal from '../components/SiteFormModal';
+import ClientsPanel from '../components/ClientsPanel';
 import { fetchStats, fetchBts, fetchDistricts } from '../api/bts';
 
 const STAT_CARDS = [
@@ -27,6 +29,7 @@ export default function Dashboard() {
   const [loading,          setLoading]          = useState(true);
   const [selectedSite,     setSelectedSite]     = useState(null);
   const [modalSite,        setModalSite]        = useState(null); // null=closed, {}=new, {...}=edit
+  const [showClients,      setShowClients]      = useState(false);
 
   const refreshMap = useCallback(() => {
     fetchStats().then(setApiStats).catch(console.error);
@@ -112,6 +115,23 @@ export default function Dashboard() {
           </div>
         ))}
 
+        {/* Clients toggle button */}
+        <button
+          onClick={() => setShowClients(p => !p)}
+          className="flex items-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-bold transition-all"
+          style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            background: showClients ? 'rgba(52,211,153,0.25)' : 'rgba(52,211,153,0.10)',
+            border: `1px solid ${showClients ? 'rgba(52,211,153,0.6)' : 'rgba(52,211,153,0.3)'}`,
+            boxShadow: showClients ? '0 0 12px rgba(52,211,153,0.3)' : 'none',
+            color: '#34d399' }}
+          title="Toggle Client Directory"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" d="M3.75 21h16.5M4.5 3h15l.75 18H3.75L4.5 3zM9 3v18M15 3v18"/>
+          </svg>
+          Clients
+        </button>
+
         {/* Add Site button */}
         <button
           onClick={() => setModalSite({})}
@@ -182,6 +202,23 @@ export default function Dashboard() {
           onSaved={handleSaved}
         />
       )}
+
+      {/* Floating right panel — Client Directory */}
+      <AnimatePresence>
+        {showClients && (
+          <motion.div
+            key="clients-panel"
+            initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="absolute right-4 z-20 flex flex-col overflow-hidden"
+            style={{ top: '72px', bottom: '52px', width: '360px',
+              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+              background: T.panelBg, border: `1px solid ${T.panelBorder}`,
+              borderRadius: '16px', boxShadow: T.panelShadow }}>
+            <ClientsPanel T={T} isDark={isDark} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Live indicator — bottom right */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all"
