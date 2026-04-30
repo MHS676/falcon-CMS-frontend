@@ -219,7 +219,7 @@ function ClientList({ data, loading, meta, page, onPageChange, search, onSearch,
 }
 
 // ── main export ───────────────────────────────────────────────────
-export default function ClientsPanel({ T, isDark }) {
+export default function ClientsPanel({ T, isDark, selectedClient, onSelectClient }) {
   const [data,      setData]      = useState([]);
   const [meta,      setMeta]      = useState({ total: 0, totalPages: 1 });
   const [locations, setLocations] = useState([]);
@@ -227,7 +227,9 @@ export default function ClientsPanel({ T, isDark }) {
   const [location,  setLocation]  = useState('');
   const [page,      setPage]      = useState(1);
   const [loading,   setLoading]   = useState(true);
-  const [selected,  setSelected]  = useState(null);
+
+  const selected = selectedClient;
+  const setSelected = onSelectClient;
 
   // load locations once
   useEffect(() => {

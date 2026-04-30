@@ -348,21 +348,24 @@ const CLIENT_LOCATION_COORDS = {
   'Wari':         [23.7200, 90.4186],
 };
 
-function makeClientMarker(isDark) {
-  const outer = '#10b981';
-  const inner = '#6ee7b7';
-  const glow  = 'rgba(16,185,129,0.55)';
+function makeClientMarker(active, isDark) {
+  const outer = active ? '#f59e0b' : '#10b981';
+  const inner = active ? '#fcd34d' : '#6ee7b7';
+  const glow  = active ? 'rgba(245,158,11,0.65)' : 'rgba(16,185,129,0.55)';
+  const size  = active ? 14 : 9;
+  const ring  = active ? 22 : 16;
   const html = `
-    <div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
-      <div style="position:absolute;width:16px;height:16px;border-radius:50%;background:${glow};animation:falconPing 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
-      <div style="position:relative;width:9px;height:9px;border-radius:50%;background:${inner};border:2px solid ${outer};box-shadow:0 0 6px ${glow};"></div>
+    <div style="position:relative;width:${ring + 4}px;height:${ring + 4}px;display:flex;align-items:center;justify-content:center;">
+      <div style="position:absolute;width:${ring}px;height:${ring}px;border-radius:50%;background:${glow};animation:falconPing ${active ? '1.2' : '2'}s cubic-bezier(0,0,0.2,1) infinite;"></div>
+      <div style="position:relative;width:${size}px;height:${size}px;border-radius:50%;background:${inner};border:2px solid ${outer};box-shadow:0 0 ${active ? 10 : 6}px ${glow};"></div>
     </div>
     <style>@keyframes falconPing{75%,100%{transform:scale(2);opacity:0}}</style>
   `;
-  return L.divIcon({ html, className: '', iconSize: [20,20], iconAnchor: [10,10], popupAnchor: [0,-12] });
+  const s = ring + 4;
+  return L.divIcon({ html, className: '', iconSize: [s, s], iconAnchor: [s/2, s/2], popupAnchor: [0, -14] });
 }
 
-export default function BangladeshMap({ data = [], clientData = [], selectedNode = null, onSelectNode, isDark = true }) {
+export default function BangladeshMap({ data = [], clientData = [], selectedNode = null, onSelectNode, selectedClient = null, onSelectClient, isDark = true }) {
   const nodes = data.map(n => {
     const [lat, lng] = getLatLng(n.id, n.district, n.thana);
     return { ...n, lat, lng };
@@ -385,6 +388,13 @@ export default function BangladeshMap({ data = [], clientData = [], selectedNode
       zoomControl={false}>
       <TileLayer attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>' url={tileUrl} />
       <FlyTo node={nodes.find(n => n.id === selectedNode?.id) || selectedNode} />
+      {/* Fly to selected client */}
+      {selectedClient && (() => {
+        const coords = CLIENT_LOCATION_COORDS[selectedClient.location];
+        if (!coords) return null;
+        const [lat, lng] = clampBD(...coords);
+        return <FlyTo node={{ lat, lng }} />;
+      })()}
       {nodes.map(n => {
         const active = selectedNode?.id === n.id;
         return (
@@ -414,12 +424,14 @@ export default function BangladeshMap({ data = [], clientData = [], selectedNode
         const coords = CLIENT_LOCATION_COORDS[c.location];
         if (!coords) return null;
         const [lat, lng] = clampBD(...coords);
+        const active = selectedClient?.id === c.id;
         return (
-          <Marker key={`client-${c.id}`} position={[lat, lng]} icon={makeClientMarker(isDark)}>
+          <Marker key={`client-${c.id}`} position={[lat, lng]} icon={makeClientMarker(active, isDark)}
+            eventHandlers={{ click: () => onSelectClient?.(active ? null : c) }}>
             <Popup>
               <div style={{ minWidth: 180, fontFamily: 'sans-serif', background: popupBg,
                 border: `1px solid ${popupBorder}`, borderRadius: 10, padding: '10px 12px', color: popupText }}>
-                <p style={{ fontWeight: 700, fontSize: 12, color: '#34d399', marginBottom: 4 }}>{c.name}</p>
+                <p style={{ fontWeight: 700, fontSize: 12, color: active ? '#fcd34d' : '#34d399', marginBottom: 4 }}>{c.name}</p>
                 <p style={{ fontSize: 11, color: popupSub, marginBottom: 4, lineHeight: 1.4 }}>{c.address}</p>
                 {c.contactPerson && <p style={{ fontSize: 10, color: '#6ee7b7' }}>👤 {c.contactPerson}</p>}
                 {c.contactNo    && <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#34d399', marginTop: 2 }}>📞 {c.contactNo}</p>}

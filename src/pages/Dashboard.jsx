@@ -32,11 +32,12 @@ export default function Dashboard() {
   const [modalSite,        setModalSite]        = useState(null);
   const [showClients,      setShowClients]      = useState(false);
   const [clientMapData,    setClientMapData]    = useState([]);
+  const [selectedClient,   setSelectedClient]   = useState(null);
 
   const toggleClients = useCallback(() => {
     setShowClients(p => {
       if (!p) fetchAllClients().then(setClientMapData).catch(console.error);
-      else    setClientMapData([]);
+      else { setClientMapData([]); setSelectedClient(null); }
       return !p;
     });
   }, []);
@@ -84,7 +85,10 @@ export default function Dashboard() {
 
       {/* Full-screen map */}
       <div className="absolute inset-0 z-0">
-        <BangladeshMap data={showClients ? [] : mapData} clientData={clientMapData} selectedNode={selectedSite} onSelectNode={setSelectedSite} isDark={isDark} />
+        <BangladeshMap data={showClients ? [] : mapData} clientData={clientMapData}
+          selectedNode={selectedSite} onSelectNode={setSelectedSite}
+          selectedClient={selectedClient} onSelectClient={setSelectedClient}
+          isDark={isDark} />
       </div>
 
       {/* Top vignette */}
@@ -233,7 +237,7 @@ export default function Dashboard() {
               backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
               background: T.panelBg, border: `1px solid ${T.panelBorder}`,
               borderRadius: '16px', boxShadow: T.panelShadow }}>
-            <ClientsPanel T={T} isDark={isDark} />
+            <ClientsPanel T={T} isDark={isDark} selectedClient={selectedClient} onSelectClient={setSelectedClient} />
           </motion.div>
         )}
       </AnimatePresence>
