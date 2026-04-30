@@ -6,6 +6,7 @@ import BangladeshMap from '../components/BangladeshMap';
 import SiteFormModal from '../components/SiteFormModal';
 import ClientsPanel from '../components/ClientsPanel';
 import { fetchStats, fetchBts, fetchDistricts } from '../api/bts';
+import { fetchAllClients } from '../api/clients';
 
 const STAT_CARDS = [
   { key: 'totalSites',     label: 'Total Sites',    color: '#818cf8', glow: 'rgba(99,102,241,0.25)',  iconPath: 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z' },
@@ -28,8 +29,17 @@ export default function Dashboard() {
   const [page,             setPage]             = useState(1);
   const [loading,          setLoading]          = useState(true);
   const [selectedSite,     setSelectedSite]     = useState(null);
-  const [modalSite,        setModalSite]        = useState(null); // null=closed, {}=new, {...}=edit
+  const [modalSite,        setModalSite]        = useState(null);
   const [showClients,      setShowClients]      = useState(false);
+  const [clientMapData,    setClientMapData]    = useState([]);
+
+  const toggleClients = useCallback(() => {
+    setShowClients(p => {
+      if (!p) fetchAllClients().then(setClientMapData).catch(console.error);
+      else    setClientMapData([]);
+      return !p;
+    });
+  }, []);
 
   const refreshMap = useCallback(() => {
     fetchStats().then(setApiStats).catch(console.error);
@@ -74,7 +84,7 @@ export default function Dashboard() {
 
       {/* Full-screen map */}
       <div className="absolute inset-0 z-0">
-        <BangladeshMap data={mapData} selectedNode={selectedSite} onSelectNode={setSelectedSite} isDark={isDark} />
+        <BangladeshMap data={showClients ? [] : mapData} clientData={clientMapData} selectedNode={selectedSite} onSelectNode={setSelectedSite} isDark={isDark} />
       </div>
 
       {/* Top vignette */}
@@ -117,7 +127,7 @@ export default function Dashboard() {
 
         {/* Clients toggle button */}
         <button
-          onClick={() => setShowClients(p => !p)}
+          onClick={toggleClients}
           className="flex items-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-bold transition-all"
           style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             background: showClients ? 'rgba(52,211,153,0.25)' : 'rgba(52,211,153,0.10)',
@@ -167,12 +177,18 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Floating left panel */}
-      <div className="absolute left-4 z-20 flex flex-col overflow-hidden transition-all duration-300"
-        style={{ top: '72px', bottom: '16px', width: '380px',
-          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-          background: T.panelBg, border: `1px solid ${T.panelBorder}`,
-          borderRadius: '16px', boxShadow: T.panelShadow }}>
+      {/* Floating left panel — BTS Sites */}
+      <AnimatePresence>
+        {!showClients && (
+          <motion.div
+            key="sites-panel"
+            initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -40, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="absolute left-4 z-20 flex flex-col overflow-hidden"
+            style={{ top: '72px', bottom: '16px', width: '380px',
+              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+              background: T.panelBg, border: `1px solid ${T.panelBorder}`,
+              borderRadius: '16px', boxShadow: T.panelShadow }}>
         <InfoPanel
           data={listData}
           loading={loading}
@@ -190,7 +206,9 @@ export default function Dashboard() {
           T={T}
           onEdit={site => setModalSite(site)}
         />
-      </div>
+      </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Site form modal */}
       {modalSite !== null && (

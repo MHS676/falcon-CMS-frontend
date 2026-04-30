@@ -307,7 +307,62 @@ function getLatLng(id, district, thana) {
   return clampBD(c[0] + (n1 - Math.floor(n1)) * 0.08 - 0.04, c[1] + (n2 - Math.floor(n2)) * 0.08 - 0.04);
 }
 
-export default function BangladeshMap({ data = [], selectedNode = null, onSelectNode, isDark = true }) {
+// Client location → [lat, lng] lookup (Dhaka neighborhoods + districts)
+const CLIENT_LOCATION_COORDS = {
+  'Aftabnagar':   [23.7500, 90.4333], 'Agargaon':     [23.7773, 90.3714],
+  'Ashulia':      [23.8940, 90.2880], 'B.Baria':      [23.9608, 91.1115],
+  'Badda':        [23.7810, 90.4333], 'Bagerhath':    [22.6602, 89.7854],
+  'Bagura':       [24.8465, 89.3778], 'Banani':       [23.7938, 90.4065],
+  'Barguna':      [22.1524, 90.1255], 'Baridhara':    [23.8010, 90.4214],
+  'Barishal':     [22.7010, 90.3535], 'Basundhara':   [23.8283, 90.4278],
+  'Bhola':        [22.6860, 90.6479], 'Bogra':        [24.8465, 89.3778],
+  'Bypass':       [23.7200, 90.4100], 'Chadpur':      [23.2333, 90.8500],
+  'Chittagong':   [22.3569, 91.7832], 'Comilla':      [23.4607, 91.1809],
+  'Cumilla':      [23.4607, 91.1809], 'Dhanmondi':    [23.7461, 90.3742],
+  'Dinajpur':     [25.6279, 88.6331], 'Feni':         [23.0236, 91.3960],
+  'Gazipur':      [23.9999, 90.4203], 'Ghorashal':    [24.0500, 90.6333],
+  'Gopalgonj':    [23.0046, 89.8264], 'Gulshan':      [23.7925, 90.4078],
+  'Gulshan-1':    [23.7866, 90.4101], 'Gulshan-2':    [23.7989, 90.4152],
+  'Hatirpul':     [23.7428, 90.3900], 'Indira Road':  [23.7551, 90.3833],
+  'Jamalpur':     [24.9000, 89.9377], 'Jessore':      [23.1667, 89.2167],
+  'Jhenaidah':    [23.5450, 89.1540], 'Kalabagan':    [23.7500, 90.3722],
+  'Kamlapur':     [23.7333, 90.4278], 'Khulna':       [22.8456, 89.5403],
+  'Kishorganj':   [24.4445, 90.7766], 'Kulaura':      [24.5333, 92.0333],
+  'Kushtia':      [23.9010, 89.1210], 'Mirpur':       [23.8041, 90.3652],
+  'Moghbazar':    [23.7500, 90.4000], 'Mohakhali':    [23.7810, 90.4025],
+  'Mohammadpur':  [23.7625, 90.3564], 'Motijheel':    [23.7333, 90.4167],
+  'Munshiganj':   [23.5422, 90.5300], 'Mymensing':    [24.7471, 90.4203],
+  'Narayanganj':  [23.6238, 90.4966], 'Narayangonj':  [23.6238, 90.4966],
+  'Narsingdi':    [23.9223, 90.7148], 'Nawabpur':     [23.7194, 90.4086],
+  'Niketon':      [23.7797, 90.4108], 'Noakhali':     [22.8696, 91.0996],
+  'Norshindi':    [23.9223, 90.7148], 'Nougoan':      [24.7936, 88.9312],
+  'Patuakhali':   [22.3605, 90.3298], 'Pubail':       [23.8667, 90.5167],
+  'Rajshahi':     [24.3636, 88.6241], 'Rangpur':      [25.7439, 89.2752],
+  'Satarkul':     [23.8167, 90.4500], 'Savar':        [23.8581, 90.2666],
+  'Shamoly':      [23.7699, 90.3580], 'Shewrapara':   [23.8000, 90.3600],
+  'Sirajgonj':    [24.4503, 89.7001], 'Sreemangal':   [24.3075, 91.7280],
+  'Sylhet':       [24.8949, 91.8687], 'Tangail':      [24.2512, 89.9167],
+  'Tejgaon':      [23.7651, 90.3944], 'Tejgoan':      [23.7651, 90.3944],
+  'Tongi':        [23.8897, 90.4000], 'Uttara':       [23.8759, 90.3795],
+  'Valuka':       [24.3667, 90.4000], 'Vulta':        [23.8333, 90.5833],
+  'Wari':         [23.7200, 90.4186],
+};
+
+function makeClientMarker(isDark) {
+  const outer = '#10b981';
+  const inner = '#6ee7b7';
+  const glow  = 'rgba(16,185,129,0.55)';
+  const html = `
+    <div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
+      <div style="position:absolute;width:16px;height:16px;border-radius:50%;background:${glow};animation:falconPing 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
+      <div style="position:relative;width:9px;height:9px;border-radius:50%;background:${inner};border:2px solid ${outer};box-shadow:0 0 6px ${glow};"></div>
+    </div>
+    <style>@keyframes falconPing{75%,100%{transform:scale(2);opacity:0}}</style>
+  `;
+  return L.divIcon({ html, className: '', iconSize: [20,20], iconAnchor: [10,10], popupAnchor: [0,-12] });
+}
+
+export default function BangladeshMap({ data = [], clientData = [], selectedNode = null, onSelectNode, isDark = true }) {
   const nodes = data.map(n => {
     const [lat, lng] = getLatLng(n.id, n.district, n.thana);
     return { ...n, lat, lng };
@@ -350,6 +405,24 @@ export default function BangladeshMap({ data = [], selectedNode = null, onSelect
                     background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399',
                     textTransform: 'uppercase', letterSpacing: '0.05em' }}>{n.persons} Guards</span>
                 </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+      {clientData.map(c => {
+        const coords = CLIENT_LOCATION_COORDS[c.location];
+        if (!coords) return null;
+        const [lat, lng] = clampBD(...coords);
+        return (
+          <Marker key={`client-${c.id}`} position={[lat, lng]} icon={makeClientMarker(isDark)}>
+            <Popup>
+              <div style={{ minWidth: 180, fontFamily: 'sans-serif', background: popupBg,
+                border: `1px solid ${popupBorder}`, borderRadius: 10, padding: '10px 12px', color: popupText }}>
+                <p style={{ fontWeight: 700, fontSize: 12, color: '#34d399', marginBottom: 4 }}>{c.name}</p>
+                <p style={{ fontSize: 11, color: popupSub, marginBottom: 4, lineHeight: 1.4 }}>{c.address}</p>
+                {c.contactPerson && <p style={{ fontSize: 10, color: '#6ee7b7' }}>👤 {c.contactPerson}</p>}
+                {c.contactNo    && <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#34d399', marginTop: 2 }}>📞 {c.contactNo}</p>}
               </div>
             </Popup>
           </Marker>
